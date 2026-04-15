@@ -1,0 +1,65 @@
+# ForensicHarvester Configuration File
+# CLI flags override these values
+
+# Mode: 'live' or 'image'
+mode: live
+
+# Path to mounted dd image (only used when mode is 'image')
+image_path: null
+
+# Collection level: 'small', 'complete', or 'exhaustive'
+level: complete
+
+# Categories to collect (comma-separated, empty = all for level)
+# Use shortcuts: browser_all, email_all, messaging_all, cloud_all
+categories: []
+
+# Output directory
+output_dir: ./output
+
+# Number of parallel threads
+threads: 4
+
+# ZIP password (null = no encryption)
+zip_password: null
+
+# Keep uncompressed output after ZIP creation
+keep_unzipped: false
+
+# Create ZIP archive
+create_zip: true
+
+# Quiet mode (no stdout output)
+quiet: false
+
+# Hash collected files
+hash_collected: true
+
+# Hash system executables (exhaustive mode only)
+hash_system_executables: false
+
+# Path to YARA rules (null = no YARA scanning)
+yara_rules: null
+
+# Memory collection options
+collect_pagefile: false
+collect_hiberfil: false
+collect_swapfile: false
+
+# Collect memory dump
+collect_memory_dump: false
+
+# Collect Volume Shadow Copies
+collect_vss: false
+
+# Maximum file size in MB (0 = no limit)
+max_file_size_mb: 0
+
+# Exclude patterns (glob patterns)
+exclude_patterns: []
+
+# Include specific users only (empty = all users)
+include_users: []
+
+# Custom paths to collect
+custom_paths: []

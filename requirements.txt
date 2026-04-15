@@ -1,0 +1,22 @@
+# ForensicHarvester Requirements
+
+# Core dependencies
+pyyaml>=6.0
+tqdm>=4.65.0
+
+# Required for raw image support
+pytsk3>=20220826
+
+# Optional dependencies (graceful degradation if not installed)
+# yara-python>=4.3.0  # YARA scanning
+# regipy>=2.0.0  # Offline registry parsing
+# pyewf>=20220826  # EWF/E01 image support
+# pycryptodome>=3.18.0  # Crypto operations
+# pyzipper>=0.3.4  # Password-protected ZIP
+
+# Windows-specific (only needed on Windows)
+# pywin32>=306  # Windows API access
+
+# Development
+# pytest>=7.4.0
+# pytest-cov>=4.1.0

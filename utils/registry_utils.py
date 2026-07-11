@@ -56,7 +56,7 @@ class RegistryKey:
 
 class RegistryParser:
     """Parser for offline registry hives."""
-    
+
     def __init__(self, hive_path: str):
         """
         Initialize the registry parser.
@@ -67,27 +67,27 @@ class RegistryParser:
         self.hive_path = extend_path(hive_path)
         self.registry = None
         self.root_key = None
-        
+
         if not REGISTRY_LIB_AVAILABLE:
             logger.warning(f"Cannot parse {hive_path}: python-registry not available")
             return
-        
+
         try:
             self.registry = Registry(self.hive_path)
             self.root_key = self.registry.root()
         except Exception as e:
             logger.warning(f"Failed to open registry hive {hive_path}: {e}")
-    
+
     def __enter__(self):
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.registry:
             try:
                 self.registry.close()
             except Exception:
                 pass
-    
+
     def get_key(self, path: str) -> Optional[Any]:
         """
         Get a registry key by path.
@@ -100,12 +100,12 @@ class RegistryParser:
         """
         if not self.registry:
             return None
-        
+
         try:
             return self.registry.open_key(path)
         except Exception:
             return None
-    
+
     def get_value(self, key_path: str, value_name: str) -> Optional[Any]:
         """
         Get a registry value.
@@ -120,12 +120,12 @@ class RegistryParser:
         key = self.get_key(key_path)
         if not key:
             return None
-        
+
         try:
             return key.value(value_name).value()
         except Exception:
             return None
-    
+
     def enumerate_keys(self, path: str = '') -> List[str]:
         """
         Enumerate all subkeys at a path.
@@ -138,21 +138,21 @@ class RegistryParser:
         """
         if not self.registry:
             return []
-        
+
         try:
             key = self.registry.open_key(path) if path else self.root_key
             if not key:
                 return []
-            
+
             subkeys = []
             for subkey in key.subkeys():
                 subkeys.append(subkey.path())
-            
+
             return subkeys
         except Exception as e:
             logger.debug(f"Error enumerating keys at {path}: {e}")
             return []
-    
+
     def enumerate_values(self, path: str) -> List[RegistryValue]:
         """
         Enumerate all values in a key.
@@ -165,12 +165,12 @@ class RegistryParser:
         """
         if not self.registry:
             return []
-        
+
         try:
             key = self.registry.open_key(path)
             if not key:
                 return []
-            
+
             values = []
             for value in key.values():
                 value_type = self._get_value_type_name(value.value_type())
@@ -180,12 +180,12 @@ class RegistryParser:
                     value=value.value(),
                     value_type=value_type,
                 ))
-            
+
             return values
         except Exception as e:
             logger.debug(f"Error enumerating values at {path}: {e}")
             return []
-    
+
     def _get_value_type_name(self, value_type: int) -> str:
         """Convert registry value type to string name."""
         type_names = {
@@ -203,7 +203,7 @@ class RegistryParser:
             11: 'REG_QWORD',
         }
         return type_names.get(value_type, f'UNKNOWN({value_type})')
-    
+
     def export_key_to_dict(self, path: str, recursive: bool = True) -> Optional[Dict]:
         """
         Export a registry key and its contents to a dictionary.
@@ -217,26 +217,26 @@ class RegistryParser:
         """
         if not self.registry:
             return None
-        
+
         try:
             key = self.registry.open_key(path)
             if not key:
                 return None
-            
+
             result = {
                 'path': path,
                 'name': key.name(),
                 'values': [],
                 'subkeys': [],
             }
-            
+
             # Get last write time
             try:
                 timestamp = datetime.fromtimestamp(key.timestamp())
                 result['last_write_time'] = timestamp.isoformat()
             except Exception:
                 pass
-            
+
             # Get values
             for value in key.values():
                 try:
@@ -247,20 +247,20 @@ class RegistryParser:
                     })
                 except Exception:
                     pass
-            
+
             # Get subkeys recursively
             if recursive:
                 for subkey in key.subkeys():
                     subkey_data = self.export_key_to_dict(subkey.path(), recursive=True)
                     if subkey_data:
                         result['subkeys'].append(subkey_data)
-            
+
             return result
-            
+
         except Exception as e:
             logger.debug(f"Error exporting key {path}: {e}")
             return None
-    
+
     def _serialize_value(self, value: Any) -> Any:
         """Serialize a registry value for JSON export."""
         if isinstance(value, bytes):
@@ -273,12 +273,12 @@ class RegistryParser:
 
 class LiveRegistryAccess:
     """Access to the live Windows registry."""
-    
+
     def __init__(self):
         """Initialize live registry access."""
         if not WINREG_AVAILABLE:
             logger.warning("winreg not available for live registry access")
-    
+
     def get_value(self, hive: str, path: str, value_name: str) -> Optional[Any]:
         """
         Get a registry value from the live registry.
@@ -293,7 +293,7 @@ class LiveRegistryAccess:
         """
         if not WINREG_AVAILABLE:
             return None
-        
+
         try:
             hive_map = {
                 'HKEY_LOCAL_MACHINE': winreg.HKEY_LOCAL_MACHINE,
@@ -307,25 +307,25 @@ class LiveRegistryAccess:
                 'HKEY_CURRENT_CONFIG': winreg.HKEY_CURRENT_CONFIG,
                 'HKCC': winreg.HKEY_CURRENT_CONFIG,
             }
-            
+
             hive_key = hive_map.get(hive.upper())
             if not hive_key:
                 logger.warning(f"Unknown hive: {hive}")
                 return None
-            
+
             key = winreg.OpenKey(hive_key, path, 0, winreg.KEY_READ)
             try:
                 value, value_type = winreg.QueryValueEx(key, value_name)
                 return value
             finally:
                 winreg.CloseKey(key)
-                
+
         except FileNotFoundError:
             return None
         except Exception as e:
             logger.debug(f"Error reading registry: {e}")
             return None
-    
+
     def enumerate_keys(self, hive: str, path: str) -> List[str]:
         """
         Enumerate subkeys in the live registry.
@@ -339,7 +339,7 @@ class LiveRegistryAccess:
         """
         if not WINREG_AVAILABLE:
             return []
-        
+
         try:
             hive_map = {
                 'HKEY_LOCAL_MACHINE': winreg.HKEY_LOCAL_MACHINE,
@@ -349,11 +349,11 @@ class LiveRegistryAccess:
                 'HKEY_USERS': winreg.HKEY_USERS,
                 'HKU': winreg.HKEY_USERS,
             }
-            
+
             hive_key = hive_map.get(hive.upper())
             if not hive_key:
                 return []
-            
+
             key = winreg.OpenKey(hive_key, path, 0, winreg.KEY_READ)
             try:
                 subkeys = []
@@ -362,11 +362,11 @@ class LiveRegistryAccess:
                 return subkeys
             finally:
                 winreg.CloseKey(key)
-                
+
         except Exception as e:
             logger.debug(f"Error enumerating registry keys: {e}")
             return []
-    
+
     def enumerate_values(self, hive: str, path: str) -> List[Dict]:
         """
         Enumerate values in a registry key.
@@ -380,7 +380,7 @@ class LiveRegistryAccess:
         """
         if not WINREG_AVAILABLE:
             return []
-        
+
         try:
             hive_map = {
                 'HKEY_LOCAL_MACHINE': winreg.HKEY_LOCAL_MACHINE,
@@ -390,11 +390,11 @@ class LiveRegistryAccess:
                 'HKEY_USERS': winreg.HKEY_USERS,
                 'HKU': winreg.HKEY_USERS,
             }
-            
+
             hive_key = hive_map.get(hive.upper())
             if not hive_key:
                 return []
-            
+
             key = winreg.OpenKey(hive_key, path, 0, winreg.KEY_READ)
             try:
                 values = []
@@ -408,7 +408,7 @@ class LiveRegistryAccess:
                 return values
             finally:
                 winreg.CloseKey(key)
-                
+
         except Exception as e:
             logger.debug(f"Error enumerating registry values: {e}")
             return []
@@ -431,12 +431,12 @@ def collect_registry_hives(
         List of collection results.
     """
     results = []
-    
+
     # Collect system hives
     for hive_name, relative_path in REGISTRY_HIVES.items():
         src_path = os.path.join(system_root, relative_path)
         dst_path = os.path.join(output_root, 'registry', hive_name)
-        
+
         if os.path.exists(src_path):
             success, error = copy_file_with_metadata(src_path, dst_path)
             results.append({
@@ -446,7 +446,7 @@ def collect_registry_hives(
                 'success': success,
                 'error': error,
             })
-            
+
             # Also collect transaction logs
             for log_ext in ['.LOG1', '.LOG2']:
                 log_path = src_path + log_ext
@@ -460,7 +460,7 @@ def collect_registry_hives(
                         'success': success,
                         'error': error,
                     })
-    
+
     # Collect user hives if users specified
     if users:
         for username in users:
@@ -469,12 +469,12 @@ def collect_registry_hives(
                 'Users',
                 username
             )
-            
+
             for hive_name in USER_REGISTRY_HIVES:
                 src_path = os.path.join(user_profile, hive_name)
                 dst_dir = os.path.join(output_root, 'registry', 'users', username)
                 dst_path = os.path.join(dst_dir, hive_name)
-                
+
                 if os.path.exists(src_path):
                     os.makedirs(dst_dir, exist_ok=True)
                     success, error = copy_file_with_metadata(src_path, dst_path)
@@ -485,7 +485,7 @@ def collect_registry_hives(
                         'success': success,
                         'error': error,
                     })
-    
+
     return results
 
 
@@ -510,7 +510,7 @@ def export_autoruns_to_json(
         'startup_folders': [],
         'asep': {},
     }
-    
+
     # Try to parse SYSTEM hive for services
     system_hive = os.path.join(registry_root, 'SYSTEM')
     if os.path.exists(system_hive) and REGISTRY_LIB_AVAILABLE:
@@ -527,22 +527,22 @@ def export_autoruns_to_json(
                             'start_type': None,
                             'service_dll': None,
                         }
-                        
+
                         try:
                             service_data['display_name'] = subkey.value('DisplayName').value()
                         except Exception:
                             pass
-                        
+
                         try:
                             service_data['image_path'] = subkey.value('ImagePath').value()
                         except Exception:
                             pass
-                        
+
                         try:
                             service_data['start_type'] = subkey.value('Start').value()
                         except Exception:
                             pass
-                        
+
                         # Check for ServiceDll
                         params = subkey.subkey('Parameters')
                         if params:
@@ -550,11 +550,11 @@ def export_autoruns_to_json(
                                 service_data['service_dll'] = params.value('ServiceDll').value()
                             except Exception:
                                 pass
-                        
+
                         autoruns['services'].append(service_data)
                     except Exception:
                         pass
-    
+
     # Try to parse SOFTWARE hive
     software_hive = os.path.join(registry_root, 'SOFTWARE')
     if os.path.exists(software_hive) and REGISTRY_LIB_AVAILABLE:
@@ -566,7 +566,7 @@ def export_autoruns_to_json(
                 'Microsoft\\Windows\\CurrentVersion\\RunOnceEx',
                 'Microsoft\\Windows\\CurrentVersion\\RunServices',
             ]
-            
+
             for run_path in run_paths:
                 key = parser.get_key(run_path)
                 if key:
@@ -577,12 +577,12 @@ def export_autoruns_to_json(
                             'value': value.value(),
                             'hive': 'SOFTWARE',
                         })
-    
+
     # Write to file
     try:
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(autoruns, f, indent=2, default=str)
     except Exception as e:
         logger.error(f"Failed to write autoruns JSON: {e}")
-    
+
     return autoruns

@@ -29,18 +29,18 @@ class DiskImage:
         self.fs_info = None
         self._lock = threading.Lock()
         self._open_image()
-    
+
     def _open_image(self):
         if not PYTSK_AVAILABLE:
             raise ImportError("pytsk3 not available")
-        
+
         try:
             signal.signal(signal.SIGALRM, timeout_handler)
             signal.alarm(30)
-            
+
             self.img_info = pytsk3.Img_Info(self.image_path)
             self.fs_info = pytsk3.FS_Info(self.img_info)
-            
+
             signal.alarm(0)
             logger.info(f"Opened image: {self.image_path}")
         except TimeoutError:
@@ -48,7 +48,7 @@ class DiskImage:
         except Exception as e:
             logger.error(f"Failed to open image: {e}")
             raise
-    
+
     def _normalize_path(self, path: str) -> str:
         path = path.strip()
         if not path.startswith('/'):
@@ -56,7 +56,7 @@ class DiskImage:
         while '//' in path:
             path = path.replace('//', '/')
         return path if path != '/' else ''
-    
+
     def file_exists(self, path: str) -> bool:
         if not self.fs_info:
             return False
@@ -71,7 +71,7 @@ class DiskImage:
             return result
         except Exception:
             return False
-    
+
     def list_files(self, path: str) -> List[Dict]:
         if not self.fs_info:
             return []
@@ -104,7 +104,7 @@ class DiskImage:
             return files
         except Exception:
             return []
-    
+
     def extract_file(self, image_path: str, output_path: str) -> bool:
         if not self.fs_info:
             return False
@@ -116,7 +116,7 @@ class DiskImage:
                 os.makedirs(os.path.dirname(output_path), exist_ok=True)
                 fs_file = self.fs_info.open(norm_path)
                 file_size = fs_file.info.meta.size if fs_file.info.meta else 0
-                
+
                 # pytsk3 read_random(, 0) returns empty - workaround by reading in chunks from offset 1
                 # Handle empty files (size 0) - just create empty output
                 if file_size == 0:
@@ -124,19 +124,19 @@ class DiskImage:
                         pass
                     signal.alarm(0)
                     return True
-                    
+
                 with open(output_path, 'wb') as f:
                     # Read in 1MB chunks starting from offset 1
                     chunk_size = 1024 * 1024
                     offset = 1
                     first_chunk = True
-                    
+
                     while offset < file_size:
                         to_read = min(chunk_size, file_size - offset)
                         data = fs_file.read_random(to_read, offset)
                         if not data:
                             break
-                        
+
                         # On first read, we need to handle offset 0
                         if first_chunk:
                             # Get byte at offset 0 by reading 2 bytes from offset 0 and taking first
@@ -144,19 +144,19 @@ class DiskImage:
                             # This is a workaround for pytsk3 bug
                             f.write(b'\x00')  # Assume first byte is null
                             first_chunk = False
-                        
+
                         f.write(data)
                         offset += len(data)
-                    
+
                     # Truncate to exact file size if we read too much
                     f.truncate(file_size)
-                    
+
             signal.alarm(0)
             return True
         except Exception as e:
             logger.debug(f"Extract failed: {e}")
             return False
-    
+
     def get_file_size(self, path: str) -> int:
         if not self.fs_info:
             return 0
@@ -172,7 +172,7 @@ class DiskImage:
             return int(size) if size else 0
         except Exception:
             return 0
-    
+
     def close(self):
         try:
             if self.img_info:

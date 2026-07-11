@@ -31,14 +31,14 @@ class CollectionResult:
     details: Dict[str, Any] = field(default_factory=dict)
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
-    
+
     @property
     def duration_seconds(self) -> float:
         """Get collection duration in seconds."""
         if self.start_time and self.end_time:
             return (self.end_time - self.start_time).total_seconds()
         return 0.0
-    
+
     @property
     def success_rate(self) -> float:
         """Get success rate percentage."""
@@ -46,17 +46,17 @@ class CollectionResult:
         if total == 0:
             return 100.0
         return (self.files_collected / total) * 100
-    
+
     def add_error(self, error: str):
         """Add an error message."""
         self.errors.append(error)
         logger.error(error)
-    
+
     def add_warning(self, warning: str):
         """Add a warning message."""
         self.warnings.append(warning)
         logger.warning(warning)
-    
+
     def to_dict(self) -> Dict:
         """Convert to dictionary."""
         return {
@@ -83,16 +83,16 @@ class BaseCollector(ABC):
     Each collector must implement the collect() method and define
     its category name.
     """
-    
+
     # Category name - must be overridden by subclasses
     category: str = 'base'
-    
+
     # Default paths to collect - can be overridden
     default_paths: List[str] = []
-    
+
     # File patterns to match - can be overridden
     file_patterns: List[str] = []
-    
+
     def __init__(
         self,
         config: Dict,
@@ -130,7 +130,7 @@ class BaseCollector(ABC):
 
         # Category-specific output directory
         self.category_output = self._get_category_output_dir()
-    
+
     @classmethod
     def supported_categories(cls) -> set:
         """Category keys this collector class can produce.
@@ -202,10 +202,10 @@ class BaseCollector(ABC):
             'file_listing': 'file_listing',
             'yara_scanner': 'yara',
         }
-        
+
         subdir = category_map.get(self.category, self.category)
         return os.path.join(self.output_root, subdir)
-    
+
     def _expand_path(self, path: str) -> str:
         """
         Expand a path relative to source root.
@@ -217,7 +217,7 @@ class BaseCollector(ABC):
             Expanded absolute path.
         """
         return self.source.expand(path)
-    
+
     def _ensure_output_dir(self, subpath: str = '') -> str:
         """
         Ensure output directory exists.
@@ -232,10 +232,10 @@ class BaseCollector(ABC):
             output_dir = os.path.join(self.category_output, subpath)
         else:
             output_dir = self.category_output
-        
+
         ensure_directory(output_dir)
         return output_dir
-    
+
     def _collect_file(
         self,
         source_path: str,
@@ -266,7 +266,7 @@ class BaseCollector(ABC):
                     error='File does not exist',
                 )
                 return False
-            
+
             if not self._is_file(source_path):
                 self.result.files_skipped += 1
                 self.manifest.add_entry(
@@ -277,7 +277,7 @@ class BaseCollector(ABC):
                     error='Not a regular file',
                 )
                 return False
-            
+
             # Check file size limit
             max_size = self.config.get('max_file_size_mb', 0)
             if max_size > 0:
@@ -292,14 +292,14 @@ class BaseCollector(ABC):
                         error=f'File exceeds size limit ({file_size} > {max_size}MB)',
                     )
                     return False
-            
+
             # Ensure destination directory exists
             output_dir = self._ensure_output_dir(dest_subpath)
             dest_path = os.path.join(output_dir, dest_filename)
-            
+
             # Extract/copy the file
             success, error = self._extract_file(source_path, dest_path)
-            
+
             if not success:
                 self.result.files_failed += 1
                 self.manifest.add_entry(
@@ -311,7 +311,7 @@ class BaseCollector(ABC):
                 )
                 self.result.add_error(f"Failed to collect {source_path}: {error}")
                 return False
-            
+
             # Get file metadata
             try:
                 stat_info = os.stat(dest_path)
@@ -324,11 +324,11 @@ class BaseCollector(ABC):
                 created = None
                 modified = None
                 accessed = None
-            
+
             # Hash the file if requested
             md5 = None
             sha256 = None
-            
+
             if hash_file and self.config.get('hash_collected', True):
                 try:
                     hash_result = hash_file_streaming(dest_path)
@@ -336,7 +336,7 @@ class BaseCollector(ABC):
                     sha256 = hash_result.sha256
                 except Exception as e:
                     self.result.add_warning(f"Failed to hash {dest_filename}: {e}")
-            
+
             # Record the path relative to output_root so downstream consumers
             # (bundle writer, ZIP) can locate the staged blob deterministically.
             try:
@@ -357,12 +357,12 @@ class BaseCollector(ABC):
                 source_modified=modified,
                 source_accessed=accessed,
             )
-            
+
             self.result.files_collected += 1
             self.result.total_bytes += file_size
-            
+
             return True
-            
+
         except Exception as e:
             self.result.files_failed += 1
             self.manifest.add_entry(
@@ -374,7 +374,7 @@ class BaseCollector(ABC):
             )
             self.result.add_error(f"Exception collecting {source_path}: {e}")
             return False
-    
+
     def _collect_files_by_pattern(
         self,
         search_dir: str,
@@ -396,18 +396,18 @@ class BaseCollector(ABC):
         """
         collected = 0
         search_path = self._expand_path(search_dir)
-        
+
         if not os.path.exists(search_path):
             return 0
-        
+
         import glob as glob_module
-        
+
         for pattern in patterns:
             if recursive:
                 search_pattern = os.path.join(search_path, '**', pattern)
             else:
                 search_pattern = os.path.join(search_path, pattern)
-            
+
             for file_path in glob_module.glob(search_pattern, recursive=recursive):
                 if os.path.isfile(file_path):
                     # Calculate relative path for destination
@@ -416,12 +416,12 @@ class BaseCollector(ABC):
                         dest_filename = rel_path.replace(os.sep, '_')
                     except Exception:
                         dest_filename = os.path.basename(file_path)
-                    
+
                     if self._collect_file(file_path, dest_subpath, dest_filename):
                         collected += 1
-        
+
         return collected
-    
+
     @abstractmethod
     def _get_time(self):
         return datetime.now()
@@ -434,7 +434,7 @@ class BaseCollector(ABC):
             CollectionResult with collection statistics.
         """
         pass
-    
+
     def run(self) -> CollectionResult:
         """
         Run the collector with timing and error handling.
@@ -443,16 +443,16 @@ class BaseCollector(ABC):
             CollectionResult.
         """
         self.result.start_time = datetime.now()
-        
+
         try:
             self.collect()
         except Exception as e:
             self.result.add_error(f"Collector exception: {e}")
             logger.exception(f"Error in {self.category} collector")
-        
+
         self.result.end_time = datetime.now()
         return self.result
-    
+
     def should_collect(self) -> bool:
         """
         Check if this collector should run based on configuration.
@@ -461,11 +461,11 @@ class BaseCollector(ABC):
             True if should collect.
         """
         categories = self.config.get('categories', [])
-        
+
         # If no categories specified, collect based on level
         if not categories:
             return True
-        
+
         # Check if this category is in the list
         return self.category in categories
 
@@ -549,9 +549,9 @@ class BaseCollector(ABC):
         try:
             if not self._path_exists(source_dir):
                 return 0
-            
+
             entries = self._list_dir(source_dir)
-            
+
             for entry_name in entries:
                 try:
                     if pattern == '*' or entry_name.endswith(pattern.lstrip('*')):
@@ -561,8 +561,8 @@ class BaseCollector(ABC):
                                 collected += 1
                 except Exception:
                     continue
-                    
+
         except Exception as e:
             logger.debug(f"Error collecting dir {source_dir}: {e}")
-        
+
         return collected

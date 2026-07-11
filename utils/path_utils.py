@@ -44,7 +44,7 @@ def expand_windows_paths(path: str, system_root: str | None = None) -> str:
     """
     if not system_root:
         system_root = os.environ.get('SystemRoot', 'C:\\Windows')
-    
+
     # Replace common Windows path variables
     replacements = {
         '%SYSTEMROOT%': system_root,
@@ -61,14 +61,14 @@ def expand_windows_paths(path: str, system_root: str | None = None) -> str:
         '%HOMEPATH%': os.environ.get('HOMEPATH', '\\Users'),
         '%SYSTEMDRIVE%': os.environ.get('SystemDrive', 'C:'),
     }
-    
+
     expanded = path
     for var, value in replacements.items():
         expanded = expanded.replace(var, value)
-    
+
     # Also handle %VAR% format
     expanded = os.path.expandvars(expanded)
-    
+
     return expanded
 
 
@@ -102,10 +102,10 @@ def ensure_absolute_path(path: str, base: str | None = None) -> str:
     """
     if os.path.isabs(path):
         return path
-    
+
     if base is None:
         base = os.getcwd()
-    
+
     return os.path.join(base, path)
 
 
@@ -122,14 +122,14 @@ def sanitize_filename(filename: str, replacement: str = '_') -> str:
     """
     # Windows invalid characters
     invalid_chars = '<>:"|?*'
-    
+
     sanitized = filename
     for char in invalid_chars:
         sanitized = sanitized.replace(char, replacement)
-    
+
     # Remove leading/trailing dots and spaces
     sanitized = sanitized.strip('. ')
-    
+
     # Limit length
     if len(sanitized) > 255:
         # Preserve extension
@@ -139,7 +139,7 @@ def sanitize_filename(filename: str, replacement: str = '_') -> str:
             sanitized = name[:max_name] + '.' + ext
         else:
             sanitized = sanitized[:255]
-    
+
     return sanitized or 'unnamed'
 
 
@@ -187,13 +187,13 @@ def build_output_path(
         Full output path.
     """
     parts = [base_dir, category]
-    
+
     if subpath:
         parts.append(subpath)
-    
+
     if filename:
         parts.append(filename)
-    
+
     return os.path.join(*parts)
 
 
@@ -209,7 +209,7 @@ def get_user_profiles_path(drive: str | None = None) -> str:
     """
     if drive is None:
         drive = os.environ.get('SystemDrive', 'C:')
-    
+
     return os.path.join(drive, 'Users')
 
 
@@ -239,34 +239,34 @@ def enumerate_user_profiles(
     """
     if profiles_root is None:
         profiles_root = get_user_profiles_path()
-    
+
     system_accounts = {
         'Default',
         'Default User',
         'All Users',
         'Public',
     }
-    
+
     profiles = []
-    
+
     try:
         if not os.path.exists(profiles_root):
             return profiles
-        
+
         for entry in os.listdir(profiles_root):
             profile_path = os.path.join(profiles_root, entry)
-            
+
             if not os.path.isdir(profile_path):
                 continue
-            
+
             if exclude_system and entry in system_accounts:
                 continue
-            
+
             profiles.append(entry)
-            
+
     except Exception as e:
         logger.debug(f"Error enumerating profiles: {e}")
-    
+
     return profiles
 
 

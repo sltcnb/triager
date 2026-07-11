@@ -44,16 +44,16 @@ def calculate_hash(
     """
     try:
         hasher = hashlib.new(algorithm)
-        
+
         with open(file_path, 'rb') as f:
             while True:
                 chunk = f.read(chunk_size)
                 if not chunk:
                     break
                 hasher.update(chunk)
-        
+
         return hasher.hexdigest()
-        
+
     except Exception as e:
         logger.debug(f"Error hashing {file_path} with {algorithm}: {e}")
         return None
@@ -77,11 +77,11 @@ def calculate_multiple_hashes(
     """
     if algorithms is None:
         algorithms = HASH_ALGORITHMS
-    
+
     try:
         # Create hashers for each algorithm
         hashers = {algo: hashlib.new(algo) for algo in algorithms}
-        
+
         with open(file_path, 'rb') as f:
             while True:
                 chunk = f.read(chunk_size)
@@ -89,9 +89,9 @@ def calculate_multiple_hashes(
                     break
                 for hasher in hashers.values():
                     hasher.update(chunk)
-        
+
         return {algo: hasher.hexdigest() for algo, hasher in hashers.items()}
-        
+
     except Exception as e:
         logger.debug(f"Error calculating hashes for {file_path}: {e}")
         return {algo: None for algo in algorithms}
@@ -115,14 +115,14 @@ def hash_file_streaming(
     """
     if algorithms is None:
         algorithms = HASH_ALGORITHMS
-    
+
     try:
         # Get file size
         file_size = Path(file_path).stat().st_size
-        
+
         # Create hashers
         hashers = {algo: hashlib.new(algo) for algo in algorithms}
-        
+
         # Stream through file
         with open(file_path, 'rb') as f:
             while True:
@@ -131,14 +131,14 @@ def hash_file_streaming(
                     break
                 for hasher in hashers.values():
                     hasher.update(chunk)
-        
+
         return HashResult(
             file_path=file_path,
             md5=hashers.get('md5', hashlib.md5()).hexdigest() if 'md5' in hashers else None,
             sha256=hashers.get('sha256', hashlib.sha256()).hexdigest() if 'sha256' in hashers else None,
             size=file_size,
         )
-        
+
     except Exception as e:
         logger.error(f"Error hashing {file_path}: {e}")
         return HashResult(
@@ -190,11 +190,11 @@ def calculate_hashes_for_files(
         List of HashResult objects.
     """
     results = []
-    
+
     for file_path in file_paths:
         result = hash_file_streaming(file_path, algorithms)
         results.append(result)
-    
+
     return results
 
 
@@ -221,10 +221,10 @@ def hash_result_to_csv(result: HashResult) -> str:
     md5 = result.md5 or ''
     sha256 = result.sha256 or ''
     error = result.error or ''
-    
+
     # Escape commas and quotes in file path
     file_path = result.file_path.replace('"', '""')
     if ',' in file_path or '"' in file_path:
         file_path = f'"{file_path}"'
-    
+
     return f"{file_path},{md5},{sha256},{result.size},{error}"

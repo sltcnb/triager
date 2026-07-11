@@ -15,19 +15,19 @@ logger = logging.getLogger(__name__)
 
 class PersistenceCollector(BaseCollector):
     """Collector for persistence artifacts."""
-    
+
     category = 'persistence'
-    
+
     def _get_time(self):
         return datetime.now()
 
     def collect(self) -> CollectionResult:
         self.result.start_time = self._get_time()
         self._ensure_output_dir()
-        
+
         # Define artifact paths to collect
         artifact_paths = ['Windows/System32/Tasks', 'Windows/Tasks', 'Windows/System32/wbem/Repository']
-        
+
         collected = 0
         for artifact_path in artifact_paths:
             # Handle wildcards in paths
@@ -39,7 +39,7 @@ class PersistenceCollector(BaseCollector):
                         base_path = '/'.join(parts[:i]) if i > 0 else ''
                         pattern = part
                         remaining = '/'.join(parts[i+1:]) if i < len(parts) - 1 else ''
-                        
+
                         if base_path and self._path_exists(base_path):
                             entries = self._list_dir(base_path)
                             for entry in entries:
@@ -58,7 +58,7 @@ class PersistenceCollector(BaseCollector):
                     filename = os.path.basename(artifact_path)
                     if self._collect_file(artifact_path, '', filename):
                         collected += 1
-        
+
         self.result.files_collected = collected
         self.result.end_time = self._get_time()
         return self.result

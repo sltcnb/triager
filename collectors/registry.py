@@ -15,9 +15,9 @@ logger = logging.getLogger(__name__)
 
 class RegistryCollector(BaseCollector):
     """Collector for registry artifacts."""
-    
+
     category = 'registry'
-    
+
     def _get_time(self):
         return datetime.now()
 
@@ -25,7 +25,7 @@ class RegistryCollector(BaseCollector):
         """Collect registry hives."""
         self.result.start_time = self._get_time()
         self._ensure_output_dir()
-        
+
         # System registry hives
         system_hives = {
             'SYSTEM': 'Windows/System32/config/SYSTEM',
@@ -37,7 +37,7 @@ class RegistryCollector(BaseCollector):
             'BCD': 'Windows/System32/config/BCD',
             'AMCACHE': 'Windows/AppCompat/Programs/Amcache.hve',
         }
-        
+
         for hive_name, hive_path in system_hives.items():
             self._collect_file(hive_path, '', hive_name)
             # Also collect log files
@@ -45,7 +45,7 @@ class RegistryCollector(BaseCollector):
                 log_path = hive_path + log_ext
                 if self._path_exists(log_path):
                     self._collect_file(log_path, '', hive_name + log_ext)
-        
+
         # User registry hives
         users_dir = 'Users'
         if self._path_exists(users_dir):

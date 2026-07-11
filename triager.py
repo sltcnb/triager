@@ -44,17 +44,17 @@ from sources import build_source
 
 class ImageSourceRoot:
     """Wrapper for disk image as source root."""
-    
+
     def __init__(self, image: DiskImage):
         self.image = image
-    
+
     def __str__(self):
         return f"Image:{self.image.image_path}"
 
 
 class Triager:
     """Main Triager class."""
-    
+
     def __init__(self, config: Dict):
         """
         Initialize the harvester.
@@ -120,7 +120,7 @@ class Triager:
             self.target_os = {'nt': 'windows', 'posix': 'linux'}.get(os.name, 'linux')
             if sys.platform == 'darwin':
                 self.target_os = 'macos'
-        
+
         # Generate output directory name
         if self.image_path:
             hostname = Path(self.image_path).stem
@@ -128,42 +128,42 @@ class Triager:
             hostname = os.environ.get('COMPUTERNAME', 'unknown')
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         self.base_output_dir = f"Triager_{hostname}_{timestamp}"
-        
+
         output_base = config.get('output_dir', './output')
         self.output_root = os.path.join(output_base, self.base_output_dir)
-        
+
         # Initialize manifest
         self.manifest = CollectionManifest(self.output_root, self.level)
-        
+
         # Setup logging
         self._setup_logging()
-        
+
         # Get categories to collect
         self.categories = self._get_categories()
-        
+
         self.logger = logging.getLogger(__name__)
-    
+
     def _setup_logging(self):
         """Setup logging configuration."""
         log_level = logging.DEBUG if not self.quiet else logging.WARNING
-        
+
         # Create formatter
         formatter = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S'
         )
-        
+
         # Root logger
         root_logger = logging.getLogger()
         root_logger.setLevel(logging.DEBUG)
-        
+
         # Console handler
         if not self.quiet:
             console_handler = logging.StreamHandler(sys.stdout)
             console_handler.setLevel(log_level)
             console_handler.setFormatter(formatter)
             root_logger.addHandler(console_handler)
-        
+
         # File handler
         log_file = os.path.join(self.output_root, 'metadata', 'collection_log.txt')
         ensure_directory(os.path.dirname(log_file))
@@ -171,7 +171,7 @@ class Triager:
         file_handler.setLevel(logging.DEBUG)
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
-    
+
     def _get_categories(self) -> List[str]:
         """
         Get list of categories to collect.
@@ -206,7 +206,7 @@ class Triager:
             categories = [c for c in categories if c not in problematic]
 
         return categories
-    
+
     def run(self) -> bool:
         """
         Run the forensic collection.
@@ -222,7 +222,7 @@ class Triager:
         self.logger.info(f"Source: {self.source_root}")
         self.logger.info(f"Output: {self.output_root}")
         self.logger.info("=" * 80)
-        
+
         # Dry-run: list what would be collected, collect nothing.
         if self.dry_run:
             print("DRY RUN — categories that would be collected:")
@@ -290,7 +290,7 @@ class Triager:
         # Print summary
         self._print_summary(zip_path or bundle_path)
         return self.exit_code == 0
-    
+
     def _run_collectors(self):
         """Run configured collectors via the HarvesterCollection orchestrator.
 
@@ -329,7 +329,7 @@ class Triager:
             len(self.session_result.artifacts),
             self.session_result.total_bytes,
         )
-    
+
     def _create_zip(self) -> Optional[str]:
         """
         Create ZIP archive of collected data.
@@ -339,25 +339,25 @@ class Triager:
         """
         if not self.config.get('create_zip', True):
             return None
-        
+
         self.logger.info("Creating ZIP archive")
-        
+
         zip_filename = generate_zip_filename(
             hostname=os.environ.get('COMPUTERNAME', 'unknown') if self.mode == 'live' else 'image',
             timestamp=datetime.now(),
         )
-        
+
         output_base = self.config.get('output_dir', './output')
         zip_path = os.path.join(output_base, zip_filename)
-        
+
         password = self.config.get('zip_password')
-        
+
         success = create_zip_file(
             source_dir=self.output_root,
             output_path=zip_path,
             password=password,
         )
-        
+
         if success:
             self.logger.info(f"Created ZIP: {zip_path}")
             self.last_zip = zip_path
@@ -376,7 +376,7 @@ class Triager:
         else:
             self.logger.error("Failed to create ZIP")
             return None
-    
+
     def _write_bundle(self) -> Optional[str]:
         """Write the content-addressed artifact bundle (manifest/blobs/events)."""
         if self.session_result is None:
@@ -401,7 +401,7 @@ class Triager:
     def _print_summary(self, zip_path: Optional[str]):
         """Print collection summary."""
         summary = self.manifest.get_summary()
-        
+
         print("\n" + "=" * 80)
         print("COLLECTION SUMMARY")
         print("=" * 80)
@@ -412,10 +412,10 @@ class Triager:
         print(f"Total size:      {summary['total_mb']:.2f} MB")
         print(f"Errors:          {summary['error_count']}")
         print(f"Warnings:        {summary['warning_count']}")
-        
+
         if zip_path:
             print(f"\nZIP file:        {zip_path}")
-        
+
         print("=" * 80)
 
 
@@ -456,7 +456,7 @@ Examples:
   python triager.py --mode image --image-path disk.dd --yara-rules ./rules/
         """
     )
-    
+
     parser.add_argument('--version', action='version',
                         version='Triager 1.2.0')
 
@@ -471,7 +471,7 @@ Examples:
         '--image-path',
         help='Path to disk image (.dd, .img, .E01) or mounted path'
     )
-    
+
     # Collection level
     parser.add_argument(
         '--level',
@@ -479,7 +479,7 @@ Examples:
         default='complete',
         help='Collection level (default: complete)'
     )
-    
+
     # Categories
     parser.add_argument(
         '--categories', '--collect',
@@ -487,14 +487,14 @@ Examples:
         type=str,
         help='Comma-separated list of categories to collect (--collect is an alias)'
     )
-    
+
     # Users
     parser.add_argument(
         '--include-users',
         type=str,
         help='Comma-separated list of usernames to collect'
     )
-    
+
     # Output
     parser.add_argument(
         '--output-dir',
@@ -502,7 +502,7 @@ Examples:
         default='./output',
         help='Output directory (default: ./output)'
     )
-    
+
     # ZIP options
     parser.add_argument(
         '--zip-password',
@@ -519,7 +519,7 @@ Examples:
         action='store_true',
         help='Skip ZIP creation'
     )
-    
+
     # Performance
     parser.add_argument(
         '--threads',
@@ -527,14 +527,14 @@ Examples:
         default=4,
         help='Number of parallel threads (default: 4)'
     )
-    
+
     # YARA
     parser.add_argument(
         '--yara-rules',
         type=str,
         help='Path to YARA rules file or directory'
     )
-    
+
     # Memory collection
     parser.add_argument(
         '--collect-pagefile',
@@ -551,7 +551,7 @@ Examples:
         action='store_true',
         help='Collect swapfile.sys'
     )
-    
+
     # Other options
     parser.add_argument(
         '--config',
@@ -606,10 +606,10 @@ Examples:
 def main():
     """Main entry point."""
     args = parse_args()
-    
+
     # Load config from file
     config = load_config(args.config)
-    
+
     # Override with CLI arguments
     config['mode'] = args.mode
     if args.image_path:

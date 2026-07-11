@@ -52,7 +52,7 @@ class MFTEntry:
 
 class NTFSAccess:
     """Access to NTFS filesystem structures."""
-    
+
     def __init__(self, drive_letter: str = 'C:'):
         """
         Initialize NTFS access.
@@ -63,19 +63,19 @@ class NTFSAccess:
         self.drive_letter = drive_letter
         self.device_path = f"\\\\.\\{drive_letter}"
         self.image = None
-        
+
         if PYTSK_AVAILABLE:
             try:
                 self.image = pytsk3.Image(self.device_path)
             except Exception as e:
                 logger.warning(f"Failed to open {self.device_path}: {e}")
-    
+
     def __enter__(self):
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
-    
+
     def collect_metadata_files(
         self,
         output_dir: str,
@@ -90,20 +90,20 @@ class NTFSAccess:
             List of collection results.
         """
         results = []
-        
+
         if PYTSK_AVAILABLE and self.image:
             try:
                 fs_info = self.image.open()
-                
+
                 for metadata_file in NTFS_METADATA_FILES:
                     try:
                         # Try to open the metadata file
                         file_obj = fs_info.open(metadata_file)
-                        
+
                         # Create output path
                         safe_name = metadata_file.replace('$', '').replace(':', '_')
                         output_path = os.path.join(output_dir, safe_name)
-                        
+
                         # Read and write
                         with open(output_path, 'wb') as f:
                             while True:
@@ -111,14 +111,14 @@ class NTFSAccess:
                                 if not data:
                                     break
                                 f.write(data)
-                        
+
                         results.append({
                             'file': metadata_file,
                             'output': output_path,
                             'success': True,
                             'error': None,
                         })
-                        
+
                     except Exception as e:
                         results.append({
                             'file': metadata_file,
@@ -126,14 +126,14 @@ class NTFSAccess:
                             'success': False,
                             'error': str(e),
                         })
-                        
+
             except Exception as e:
                 logger.error(f"Failed to access filesystem: {e}")
         else:
             logger.warning("pytsk3 not available, cannot collect NTFS metadata")
-        
+
         return results
-    
+
     def enumerate_ads(
         self,
         file_path: str,
@@ -148,7 +148,7 @@ class NTFSAccess:
             List of ADSInfo objects.
         """
         ads_list = []
-        
+
         try:
             # Use Windows API for ADS enumeration
             handle = ctypes.windll.kernel32.CreateFileW(
@@ -160,10 +160,10 @@ class NTFSAccess:
                 0x02000000,  # FILE_FLAG_BACKUP_SEMANTICS
                 None,
             )
-            
+
             if handle == -1 or handle == 0xFFFFFFFFFFFFFFFF:
                 return ads_list
-            
+
             try:
                 # Get file information
                 buffer = ctypes.create_unicode_buffer(32768)
@@ -173,25 +173,25 @@ class NTFSAccess:
                     buffer,
                     len(buffer),
                 )
-                
+
                 if result:
                     # Parse the stream information
                     # (Simplified - full parsing would require more complex structure)
                     pass
-                    
+
             finally:
                 ctypes.windll.kernel32.CloseHandle(handle)
-                
+
         except Exception as e:
             logger.debug(f"Error enumerating ADS for {file_path}: {e}")
-        
+
         # Fallback: Try to find Zone.Identifier and common ADS
         common_ads = [
             ADS_ZONE_IDENTIFIER,
             ':SummaryInformation',
             ':Ole10Native',
         ]
-        
+
         for ads_name in common_ads:
             ads_path = f"{file_path}{ads_name}"
             if os.path.exists(extend_path(ads_path)):
@@ -204,9 +204,9 @@ class NTFSAccess:
                     ))
                 except Exception:
                     pass
-        
+
         return ads_list
-    
+
     def get_usn_journal(
         self,
         output_path: str,
@@ -222,27 +222,27 @@ class NTFSAccess:
         """
         if not PYTSK_AVAILABLE or not self.image:
             return False, "pytsk3 not available"
-        
+
         try:
             fs_info = self.image.open()
-            
+
             # Open $Extend/$UsnJrnl
             usn_path = '$Extend/$UsnJrnl:$J'
             file_obj = fs_info.open(usn_path)
-            
+
             with open(extend_path(output_path), 'wb') as f:
                 while True:
                     data = file_obj.read(65536)
                     if not data:
                         break
                     f.write(data)
-            
+
             return True, None
-            
+
         except Exception as e:
             logger.error(f"Failed to extract USN Journal: {e}")
             return False, str(e)
-    
+
     def parse_mft_entries(
         self,
         mft_path: str,
@@ -259,7 +259,7 @@ class NTFSAccess:
             List of MFTEntry objects.
         """
         entries = []
-        
+
         try:
             with open(extend_path(mft_path), 'rb') as f:
                 for i in range(max_entries):
@@ -267,28 +267,28 @@ class NTFSAccess:
                     record_data = f.read(1024)
                     if len(record_data) < 1024:
                         break
-                    
+
                     # Check for FILE signature
                     if record_data[:4] != b'FILE':
                         continue
-                    
+
                     # Parse basic fields
                     try:
                         # Sequence number at offset 4
                         seq_num = struct.unpack('<H', record_data[4:6])[0]
-                        
+
                         # Flags at offset 22
                         flags = struct.unpack('<H', record_data[22:24])[0]
-                        
+
                         # Check if deleted (flag bit 0)
                         is_deleted = bool(flags & 0x0001)
-                        
+
                         # Get record number
                         record_num = i
-                        
+
                         # Try to extract filename (simplified)
                         file_name = f"MFT_RECORD_{record_num}"
-                        
+
                         entry = MFTEntry(
                             record_number=record_num,
                             sequence_number=seq_num,
@@ -297,17 +297,17 @@ class NTFSAccess:
                             flags=flags,
                             is_deleted=is_deleted,
                         )
-                        
+
                         entries.append(entry)
-                        
+
                     except Exception:
                         continue
-                        
+
         except Exception as e:
             logger.error(f"Failed to parse MFT: {e}")
-        
+
         return entries
-    
+
     def collect_ads_inventory(
         self,
         root_path: str,
@@ -324,23 +324,23 @@ class NTFSAccess:
             List of all ADS found.
         """
         all_ads = []
-        
+
         try:
             for dirpath, dirnames, filenames in os.walk(extend_path(root_path)):
                 for filename in filenames:
                     file_path = os.path.join(dirpath, filename)
                     ads_list = self.enumerate_ads(file_path)
                     all_ads.extend(ads_list)
-            
+
             # Write CSV
             with open(output_csv, 'w', encoding='utf-8') as f:
                 f.write("file_path,stream_name,size,content_hash\n")
                 for ads in all_ads:
                     f.write(f'"{ads.file_path}","{ads.stream_name}",{ads.size},"{ads.content_hash or ""}"\n')
-                    
+
         except Exception as e:
             logger.error(f"Error collecting ADS inventory: {e}")
-        
+
         return all_ads
 
 
@@ -366,13 +366,13 @@ def collect_ntfs_artifacts(
         'ads_inventory': [],
         'mft_entries': [],
     }
-    
+
     with NTFSAccess(drive_letter) as ntfs:
         # Collect metadata files
         metadata_dir = os.path.join(output_dir, 'filesystem')
         os.makedirs(metadata_dir, exist_ok=True)
         results['metadata_files'] = ntfs.collect_metadata_files(metadata_dir)
-        
+
         # Collect USN Journal
         if level in ['complete', 'exhaustive']:
             usn_path = os.path.join(metadata_dir, '$UsnJrnl_$J')
@@ -382,7 +382,7 @@ def collect_ntfs_artifacts(
                 'error': error,
                 'path': usn_path if success else None,
             }
-        
+
         # Collect ADS inventory
         if level == 'exhaustive':
             ads_csv = os.path.join(metadata_dir, 'ads_inventory.csv')
@@ -390,5 +390,5 @@ def collect_ntfs_artifacts(
                 f"{drive_letter}\\",
                 ads_csv,
             )
-    
+
     return results

@@ -45,16 +45,16 @@ def create_zip_file(
     """
     try:
         source_path = Path(source_dir).resolve()
-        
+
         # Count total files
         total_files = 0
         for root, dirs, files in os.walk(source_path):
             total_files += len(files)
-        
+
         if total_files == 0:
             logger.warning(f"No files to compress in {source_dir}")
             return False
-        
+
         # Choose ZIP class based on password
         use_encryption = bool(password) and PYZIPPER_AVAILABLE
         if use_encryption:
@@ -79,32 +79,32 @@ def create_zip_file(
             if use_encryption:
                 zipf.setencryption(pyzipper.WZ_AES)
                 zipf.setpassword(password.encode('utf-8'))
-            
+
             current_file = 0
-            
+
             for root, dirs, files in os.walk(source_path):
                 for filename in files:
                     file_path = Path(root) / filename
-                    
+
                     # Calculate archive path (relative to source_dir)
                     arcname = file_path.relative_to(source_path)
-                    
+
                     try:
                         zipf.write(file_path, arcname)
                     except Exception as e:
                         logger.warning(f"Failed to add {file_path} to ZIP: {e}")
-                    
+
                     current_file += 1
-                    
+
                     if progress_callback:
                         try:
                             progress_callback(str(arcname), current_file, total_files)
                         except Exception:
                             pass
-        
+
         logger.info(f"Successfully created ZIP: {output_path}")
         return True
-        
+
     except Exception as e:
         logger.error(f"Failed to create ZIP: {e}")
         return False
@@ -150,24 +150,24 @@ def get_zip_info(zip_path: str) -> dict:
                 'is_zip64': False,  # Would need to check ZipInfo
                 'comment': zipf.comment.decode('utf-8') if zipf.comment else '',
             }
-            
+
             # Calculate total size
             total_size = 0
             compressed_size = 0
-            
+
             for file_info in zipf.infolist():
                 total_size += file_info.file_size
                 compressed_size += file_info.compress_size
-            
+
             info['total_size'] = total_size
             info['compressed_size'] = compressed_size
             info['compression_ratio'] = (
                 (total_size - compressed_size) / total_size * 100
                 if total_size > 0 else 0
             )
-            
+
             return info
-            
+
     except Exception as e:
         logger.error(f"Failed to read ZIP info: {e}")
         return {}
@@ -222,15 +222,15 @@ def extract_zip(
                 return True
             except Exception:
                 pass
-        
+
         # Fall back to standard zipfile
         with zipfile.ZipFile(zip_path, 'r') as zipf:
             if password:
                 logger.warning("Standard zipfile cannot handle encrypted ZIPs")
             zipf.extractall(output_dir)
-        
+
         return True
-        
+
     except Exception as e:
         logger.error(f"Failed to extract ZIP: {e}")
         return False
@@ -254,12 +254,12 @@ def generate_zip_filename(
     """
     if timestamp is None:
         timestamp = datetime.now()
-    
+
     ts_str = timestamp.strftime('%Y%m%d_%H%M%S')
-    
+
     # Sanitize hostname
     safe_hostname = hostname.replace('\\', '-').replace('/', '-').replace(':', '-')
-    
+
     return f"{prefix}_{safe_hostname}_{ts_str}.zip"
 
 
@@ -274,7 +274,7 @@ def calculate_zip_size(source_dir: str) -> int:
         Total size in bytes.
     """
     total_size = 0
-    
+
     try:
         for root, dirs, files in os.walk(source_dir):
             for filename in files:
@@ -285,5 +285,5 @@ def calculate_zip_size(source_dir: str) -> int:
                     pass
     except Exception:
         pass
-    
+
     return total_size

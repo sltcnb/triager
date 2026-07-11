@@ -33,11 +33,11 @@ class CollectionEntry:
     error: Optional[str]
     category: str
     level: str
-    
+
     def to_dict(self) -> Dict:
         """Convert to dictionary."""
         return asdict(self)
-    
+
     def to_csv_row(self) -> List:
         """Convert to CSV row."""
         return [
@@ -59,13 +59,13 @@ class CollectionEntry:
 
 class CollectionManifest:
     """Manages the collection manifest."""
-    
+
     CSV_HEADERS = [
         'source_path', 'dest_path', 'md5', 'sha256', 'size_bytes',
         'source_created', 'source_modified', 'source_accessed',
         'collection_time', 'status', 'error', 'category', 'level'
     ]
-    
+
     def __init__(self, output_dir: str, level: str):
         """
         Initialize the manifest.
@@ -81,7 +81,7 @@ class CollectionManifest:
         self.end_time: Optional[datetime] = None
         self.errors: List[str] = []
         self.warnings: List[str] = []
-        
+
         # Statistics
         self.stats = {
             'total_files': 0,
@@ -91,7 +91,7 @@ class CollectionManifest:
             'total_bytes': 0,
             'categories': {},
         }
-    
+
     def add_entry(
         self,
         source_path: str,
@@ -140,12 +140,12 @@ class CollectionManifest:
             category=category,
             level=self.level,
         )
-        
+
         self.entries.append(entry)
-        
+
         # Update statistics
         self.stats['total_files'] += 1
-        
+
         if status == 'success':
             self.stats['successful'] += 1
             self.stats['total_bytes'] += size_bytes
@@ -155,7 +155,7 @@ class CollectionManifest:
                 self.errors.append(f"{source_path}: {error}")
         elif status == 'skipped':
             self.stats['skipped'] += 1
-        
+
         # Update category stats
         if category not in self.stats['categories']:
             self.stats['categories'][category] = {
@@ -164,26 +164,26 @@ class CollectionManifest:
                 'failed': 0,
                 'bytes': 0,
             }
-        
+
         self.stats['categories'][category]['total'] += 1
         if status == 'success':
             self.stats['categories'][category]['successful'] += 1
             self.stats['categories'][category]['bytes'] += size_bytes
         elif status == 'failed':
             self.stats['categories'][category]['failed'] += 1
-        
+
         return entry
-    
+
     def add_error(self, error: str):
         """Add a general error."""
         self.errors.append(error)
         logger.error(error)
-    
+
     def add_warning(self, warning: str):
         """Add a warning."""
         self.warnings.append(warning)
         logger.warning(warning)
-    
+
     def save_manifest_json(self) -> str:
         """
         Save the manifest as JSON.
@@ -192,7 +192,7 @@ class CollectionManifest:
             Path to saved manifest.
         """
         self.end_time = datetime.now()
-        
+
         manifest_data = {
             'metadata': {
                 'tool': 'Triager',
@@ -207,21 +207,21 @@ class CollectionManifest:
             'warnings': self.warnings,
             'files': [entry.to_dict() for entry in self.entries],
         }
-        
+
         manifest_path = os.path.join(
             self.output_dir,
             'metadata',
             'collection_manifest.json'
         )
-        
+
         os.makedirs(os.path.dirname(manifest_path), exist_ok=True)
-        
+
         with open(manifest_path, 'w', encoding='utf-8') as f:
             json.dump(manifest_data, f, indent=2, default=str)
-        
+
         logger.info(f"Saved manifest to {manifest_path}")
         return manifest_path
-    
+
     def save_manifest_csv(self) -> str:
         """
         Save the manifest as CSV.
@@ -234,19 +234,19 @@ class CollectionManifest:
             'metadata',
             'collected_files.csv'
         )
-        
+
         os.makedirs(os.path.dirname(csv_path), exist_ok=True)
-        
+
         with open(csv_path, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             writer.writerow(self.CSV_HEADERS)
-            
+
             for entry in self.entries:
                 writer.writerow(entry.to_csv_row())
-        
+
         logger.info(f"Saved CSV manifest to {csv_path}")
         return csv_path
-    
+
     def save_errors_log(self) -> str:
         """
         Save errors to a log file.
@@ -259,33 +259,33 @@ class CollectionManifest:
             'metadata',
             'errors.log'
         )
-        
+
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
-        
+
         with open(log_path, 'w', encoding='utf-8') as f:
             f.write("Triager Error Log\n")
             f.write(f"Generated: {datetime.now().isoformat()}\n")
             f.write(f"Level: {self.level}\n\n")
             f.write(f"Total Errors: {len(self.errors)}\n")
             f.write(f"Total Warnings: {len(self.warnings)}\n\n")
-            
+
             if self.errors:
                 f.write("=" * 80 + "\n")
                 f.write("ERRORS:\n")
                 f.write("=" * 80 + "\n\n")
                 for error in self.errors:
                     f.write(f"- {error}\n")
-            
+
             if self.warnings:
                 f.write("\n" + "=" * 80 + "\n")
                 f.write("WARNINGS:\n")
                 f.write("=" * 80 + "\n\n")
                 for warning in self.warnings:
                     f.write(f"- {warning}\n")
-        
+
         logger.info(f"Saved errors log to {log_path}")
         return log_path
-    
+
     def get_summary(self) -> Dict:
         """
         Get a summary of the collection.
@@ -321,7 +321,7 @@ def create_hash_csv(
     with open(output_path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         writer.writerow(['file_path', 'md5', 'sha256', 'size_bytes'])
-        
+
         for entry in entries:
             if entry.md5 or entry.sha256:
                 writer.writerow([

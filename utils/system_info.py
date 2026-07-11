@@ -74,7 +74,7 @@ def get_memory_info() -> int:
             import ctypes
             kernel32 = ctypes.windll.kernel32
             c_ulonglong = ctypes.c_ulonglong
-            
+
             class MEMORYSTATUSEX(ctypes.Structure):
                 _fields_ = [
                     ('dwLength', ctypes.c_ulong),
@@ -87,22 +87,22 @@ def get_memory_info() -> int:
                     ('ullAvailVirtual', c_ulonglong),
                     ('ullAvailExtendedVirtual', c_ulonglong),
                 ]
-            
+
             mem_status = MEMORYSTATUSEX()
             mem_status.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
-            
+
             if kernel32.GlobalMemoryStatusEx(ctypes.byref(mem_status)):
                 return mem_status.ullTotalPhys
     except Exception:
         pass
-    
+
     # Fallback for non-Windows
     try:
         import psutil
         return psutil.virtual_memory().total
     except Exception:
         pass
-    
+
     return 0
 
 
@@ -112,20 +112,20 @@ def get_boot_time() -> Optional[str]:
         if os.name == 'nt':
             import ctypes
             kernel32 = ctypes.windll.kernel32
-            
+
             boot_time = datetime.fromtimestamp(
                 ctypes.c_double(kernel32.GetTickCount64() / 1000.0)
             )
             return boot_time.isoformat()
     except Exception:
         pass
-    
+
     try:
         import psutil
         return datetime.fromtimestamp(psutil.boot_time()).isoformat()
     except Exception:
         pass
-    
+
     return None
 
 
@@ -138,13 +138,13 @@ def get_uptime_seconds() -> Optional[int]:
             return int(kernel32.GetTickCount64() / 1000)
     except Exception:
         pass
-    
+
     try:
         import psutil
         return int(datetime.now().timestamp() - psutil.boot_time())
     except Exception:
         pass
-    
+
     return None
 
 
@@ -168,17 +168,17 @@ def is_running_as_admin() -> bool:
 def get_network_interfaces() -> List[Dict]:
     """Get network interface information."""
     interfaces = []
-    
+
     try:
         import psutil
         net_if_addrs = psutil.net_if_addrs()
-        
+
         for iface_name, addrs in net_if_addrs.items():
             iface_info = {
                 'name': iface_name,
                 'addresses': [],
             }
-            
+
             for addr in addrs:
                 addr_info = {
                     'family': addr.family.name if hasattr(addr.family, 'name') else str(addr.family),
@@ -186,12 +186,12 @@ def get_network_interfaces() -> List[Dict]:
                     'netmask': addr.netmask,
                 }
                 iface_info['addresses'].append(addr_info)
-            
+
             interfaces.append(iface_info)
-            
+
     except Exception as e:
         logger.debug(f"Failed to get network interfaces: {e}")
-        
+
         # Fallback using socket
         try:
             hostname = socket.gethostname()
@@ -205,37 +205,37 @@ def get_network_interfaces() -> List[Dict]:
             })
         except Exception:
             pass
-    
+
     return interfaces
 
 
 def get_disk_info() -> List[Dict]:
     """Get disk information."""
     disks = []
-    
+
     try:
         if os.name == 'nt':
             import ctypes
-            
+
             drives = []
             bitmask = ctypes.windll.kernel32.GetLogicalDrives()
             for i in range(26):
                 if bitmask & (1 << i):
                     drives.append(chr(ord('A') + i) + ':\\')
-            
+
             for drive in drives:
                 try:
                     free_bytes = ctypes.c_ulonglong()
                     total_bytes = ctypes.c_ulonglong()
                     total_free_bytes = ctypes.c_ulonglong()
-                    
+
                     result = ctypes.windll.kernel32.GetDiskFreeSpaceExW(
                         drive,
                         ctypes.byref(free_bytes),
                         ctypes.byref(total_bytes),
                         ctypes.byref(total_free_bytes),
                     )
-                    
+
                     if result:
                         disks.append({
                             'drive': drive,
@@ -246,7 +246,7 @@ def get_disk_info() -> List[Dict]:
                     pass
     except Exception:
         pass
-    
+
     # Fallback for non-Windows
     try:
         import psutil
@@ -264,7 +264,7 @@ def get_disk_info() -> List[Dict]:
                 pass
     except Exception:
         pass
-    
+
     return disks
 
 
@@ -273,14 +273,14 @@ def get_os_install_date() -> Optional[str]:
     try:
         if os.name == 'nt':
             import winreg
-            
+
             key = winreg.OpenKey(
                 winreg.HKEY_LOCAL_MACHINE,
                 r"SOFTWARE\Microsoft\Windows NT\CurrentVersion",
                 0,
                 winreg.KEY_READ,
             )
-            
+
             try:
                 install_date, _ = winreg.QueryValueEx(key, 'InstallDate')
                 return datetime.fromtimestamp(install_date).isoformat()
@@ -288,7 +288,7 @@ def get_os_install_date() -> Optional[str]:
                 winreg.CloseKey(key)
     except Exception:
         pass
-    
+
     return None
 
 
@@ -310,7 +310,7 @@ def collect_system_info() -> SystemInfo:
         SystemInfo object.
     """
     platform_info = get_platform_info()
-    
+
     return SystemInfo(
         hostname=get_hostname(),
         fqdn=get_fqdn(),
@@ -347,15 +347,15 @@ def save_system_info(output_dir: str) -> str:
         Path to saved file.
     """
     system_info = collect_system_info()
-    
+
     metadata_dir = os.path.join(output_dir, 'metadata')
     os.makedirs(metadata_dir, exist_ok=True)
-    
+
     output_path = os.path.join(metadata_dir, 'system_info.json')
-    
+
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(asdict(system_info), f, indent=2, default=str)
-    
+
     logger.info(f"Saved system info to {output_path}")
     return output_path
 

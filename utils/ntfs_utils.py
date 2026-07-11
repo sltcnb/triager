@@ -9,11 +9,10 @@ import os
 import ctypes
 import logging
 import struct
-from typing import List, Dict, Optional, Tuple, BinaryIO
+from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
-from pathlib import Path
 
-from utils.file_ops import extend_path, copy_file_streaming
+from utils.file_ops import extend_path
 from utils.constants import NTFS_METADATA_FILES, ADS_ZONE_IDENTIFIER
 
 logger = logging.getLogger(__name__)

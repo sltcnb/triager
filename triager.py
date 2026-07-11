@@ -13,13 +13,11 @@ and produces a ZIP file with deterministic naming.
 import argparse
 import os
 import sys
-import json
 import logging
 import yaml
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Any
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Dict, List, Optional
 
 # Add the tool directory to path for imports
 TOOL_DIR = Path(__file__).parent.absolute()
@@ -32,7 +30,7 @@ from utils.constants import (
     LEVEL_CATEGORIES,
     DEFAULT_CONFIG,
 )
-from utils.system_info import collect_system_info, save_system_info
+from utils.system_info import save_system_info
 from utils.manifest import CollectionManifest
 from utils.zip_utils import create_zip_file, generate_zip_filename
 from utils.file_ops import ensure_directory
@@ -40,7 +38,6 @@ from utils.image_utils import DiskImage, is_image_file
 
 # Collector dispatch is now handled by the auto-discovery registry + the
 # HarvesterCollection orchestrator (single source of truth — no static maps).
-from collectors.base import BaseCollector, CollectionResult
 from collectors import collector_registry as registry
 from collectors.orchestrator import HarvesterCollection
 from sources import build_source

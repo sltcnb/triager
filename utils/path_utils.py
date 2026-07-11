@@ -7,11 +7,9 @@ path handling utilities.
 
 import os
 import logging
-from pathlib import Path
 from typing import List, Optional, Dict
 from datetime import datetime
 
-from utils.constants import WINDOWS_PATHS, MAX_PATH_WINDOWS
 
 logger = logging.getLogger(__name__)
 

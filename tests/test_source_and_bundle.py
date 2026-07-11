@@ -45,7 +45,8 @@ def test_end_to_end_bundle_is_schema_valid():
         source=build_source(src), threads=1, hostname="T", os_name="windows",
         session_id="sess1",
     )
-    coll.start(); coll.collect()
+    coll.start()
+    coll.collect()
     result = coll.finalize()
     assert len(result.artifacts) == 1
     # manifest conforms to the vendored contract

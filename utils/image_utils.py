@@ -3,7 +3,6 @@ Disk image utilities using pytsk3 with crash protection.
 """
 
 import os
-import sys
 import logging
 import threading
 from typing import List, Dict
@@ -45,7 +44,7 @@ class DiskImage:
             signal.alarm(0)
             logger.info(f"Opened image: {self.image_path}")
         except TimeoutError:
-            raise Exception(f"Timeout opening image")
+            raise Exception("Timeout opening image")
         except Exception as e:
             logger.error(f"Failed to open image: {e}")
             raise

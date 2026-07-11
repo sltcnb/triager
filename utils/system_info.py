@@ -9,9 +9,8 @@ import platform
 import socket
 import logging
 import json
-import subprocess
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 from dataclasses import dataclass, asdict
 
 logger = logging.getLogger(__name__)
@@ -296,7 +295,6 @@ def get_os_install_date() -> Optional[str]:
 def get_timezone() -> str:
     """Get system timezone."""
     try:
-        from datetime import timezone
         tz = datetime.now().astimezone().tzinfo
         tzname = tz.tzname(datetime.now()) if tz else 'Unknown'
         return tzname if tzname else 'Unknown'

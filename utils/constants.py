@@ -5,8 +5,7 @@ This module defines all path patterns, category mappings, and configuration cons
 used throughout the application.
 """
 
-from typing import Dict, List, Set
-from pathlib import Path
+from typing import Dict, List
 
 # Collection level definitions
 COLLECTION_LEVELS = ['small', 'complete', 'exhaustive']

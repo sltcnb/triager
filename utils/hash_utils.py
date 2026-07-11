@@ -8,7 +8,7 @@ algorithms and streaming for large files.
 import hashlib
 import logging
 from pathlib import Path
-from typing import Dict, Optional, List, BinaryIO
+from typing import Dict, Optional, List
 from dataclasses import dataclass
 
 from utils.constants import DEFAULT_CHUNK_SIZE, HASH_ALGORITHMS

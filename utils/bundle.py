@@ -21,10 +21,8 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import os
 import shutil
 from pathlib import Path
-from typing import Optional
 
 from collectors.artifact_collector import SessionResult, now_iso
 from utils.contracts import validate_bundle_manifest

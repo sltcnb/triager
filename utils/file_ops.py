@@ -7,18 +7,15 @@ and error-resilient file operations.
 
 import os
 import shutil
-import ctypes
 import logging
 from pathlib import Path
 from datetime import datetime
-from typing import Optional, Dict, Any, Tuple, List
+from typing import Optional, Tuple, List
 from dataclasses import dataclass
 
 from utils.constants import (
     MAX_PATH_WINDOWS,
     DEFAULT_CHUNK_SIZE,
-    FILE_ATTRIBUTE_HIDDEN,
-    FILE_ATTRIBUTE_SYSTEM,
 )
 
 logger = logging.getLogger(__name__)
@@ -116,17 +113,16 @@ def copy_file_with_metadata(
         if dst_dir and not os.path.exists(dst_dir):
             os.makedirs(dst_dir, exist_ok=True)
         
-        # Get source metadata before copying
-        src_metadata = None
-        if preserve_timestamps:
-            src_metadata = get_file_metadata(extended_src)
-        
         # Check if source is a regular file
         if not os.path.isfile(extended_src):
             return False, "Source is not a regular file"
-        
-        # Perform the copy
-        shutil.copy2(extended_src, extended_dst)
+
+        # Perform the copy. copy2 preserves timestamps/metadata; plain copy
+        # only preserves permissions, honouring preserve_timestamps=False.
+        if preserve_timestamps:
+            shutil.copy2(extended_src, extended_dst)
+        else:
+            shutil.copy(extended_src, extended_dst)
         
         # Verify the copy
         if not os.path.exists(extended_dst):

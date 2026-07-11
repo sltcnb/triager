@@ -317,11 +317,7 @@ def request_admin_privileges() -> bool:
     
     try:
         import sys
-        import os
-        
-        # Get the current script path
-        script = os.path.abspath(sys.argv[0])
-        
+
         # Relaunch with elevation
         ret = ctypes.windll.shell32.ShellExecuteW(
             None,

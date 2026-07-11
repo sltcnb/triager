@@ -8,10 +8,9 @@ live systems and offline hives.
 import os
 import logging
 import json
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass, asdict
+from typing import Dict, List, Optional, Any
+from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
 
 from utils.constants import REGISTRY_HIVES, USER_REGISTRY_HIVES
 from utils.file_ops import extend_path, copy_file_with_metadata

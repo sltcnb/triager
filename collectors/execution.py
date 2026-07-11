@@ -4,13 +4,10 @@ Execution collector for Triager.
 Collects execution artifacts.
 """
 
-import os
 import logging
-from typing import List
 
 from collectors.base import BaseCollector, CollectionResult
 from datetime import datetime
-from utils.file_ops import ensure_directory
 
 logger = logging.getLogger(__name__)
 
@@ -53,9 +50,9 @@ class ExecutionCollector(BaseCollector):
             self._collect_file(amcache, 'amcache', 'Amcache.hve')
         
         # Timeline/ActivitiesCache
-        activities_db = 'Users/*/AppData/Local/Microsoft/Windows/ActivitiesCache.db'
-        # Would need glob support for wildcard
-        
+        # Users/*/AppData/Local/Microsoft/Windows/ActivitiesCache.db
+        # Would need glob support for the wildcard user directory.
+
         # PCA logs
         pca_dir = 'Windows/PCA'
         if self._path_exists(pca_dir):

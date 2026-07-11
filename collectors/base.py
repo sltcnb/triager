@@ -10,10 +10,9 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
 
-from utils.file_ops import copy_file_with_metadata, extend_path, ensure_directory
-from utils.hash_utils import hash_file_streaming, HashResult
+from utils.file_ops import ensure_directory
+from utils.hash_utils import hash_file_streaming
 from utils.manifest import CollectionManifest
 
 logger = logging.getLogger(__name__)
@@ -446,7 +445,7 @@ class BaseCollector(ABC):
         self.result.start_time = datetime.now()
         
         try:
-            result = self.collect()
+            self.collect()
         except Exception as e:
             self.result.add_error(f"Collector exception: {e}")
             logger.exception(f"Error in {self.category} collector")

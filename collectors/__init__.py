@@ -5,7 +5,6 @@ This package contains all artifact collectors organized by category.
 """
 
 from collectors.base import BaseCollector, CollectionResult
-from datetime import datetime
 from .registry import RegistryCollector
 from .eventlogs import EventLogsCollector
 from .filesystem import FilesystemCollector

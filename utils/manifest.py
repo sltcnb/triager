@@ -10,11 +10,9 @@ import csv
 import logging
 import os
 from datetime import datetime
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, asdict, field
-from pathlib import Path
+from typing import Dict, List, Optional
+from dataclasses import dataclass, asdict
 
-from utils.hash_utils import HashResult
 
 logger = logging.getLogger(__name__)
 
@@ -265,7 +263,7 @@ class CollectionManifest:
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
         
         with open(log_path, 'w', encoding='utf-8') as f:
-            f.write(f"Triager Error Log\n")
+            f.write("Triager Error Log\n")
             f.write(f"Generated: {datetime.now().isoformat()}\n")
             f.write(f"Level: {self.level}\n\n")
             f.write(f"Total Errors: {len(self.errors)}\n")

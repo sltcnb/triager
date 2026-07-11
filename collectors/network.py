@@ -6,7 +6,6 @@ Collects network artifacts.
 
 import os
 import logging
-from typing import List
 
 from collectors.base import BaseCollector, CollectionResult
 from datetime import datetime

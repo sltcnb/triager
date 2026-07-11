@@ -9,7 +9,7 @@ import os
 import zipfile
 import logging
 from pathlib import Path
-from typing import Optional, List, Callable
+from typing import Callable
 from datetime import datetime
 
 # Try to import pyzipper for password protection
@@ -56,24 +56,28 @@ def create_zip_file(
             return False
         
         # Choose ZIP class based on password
-        if password and PYZIPPER_AVAILABLE:
+        use_encryption = bool(password) and PYZIPPER_AVAILABLE
+        if use_encryption:
             zip_class = pyzipper.AESZipFile
-            encryption = pyzipper.WZ_AES
         else:
             zip_class = zipfile.ZipFile
-            encryption = None
-        
+            if password and not PYZIPPER_AVAILABLE:
+                logger.warning(
+                    "Password requested but pyzipper is not installed; "
+                    "creating an unencrypted ZIP"
+                )
+
         # Create ZIP file
         with zip_class(
             output_path,
             'w',
             compression=compression,
             allowZip64=True,
-            
         ) as zipf:
-            
-            # Set password if provided
-            if password:
+
+            # Enable AES encryption and set password if provided
+            if use_encryption:
+                zipf.setencryption(pyzipper.WZ_AES)
                 zipf.setpassword(password.encode('utf-8'))
             
             current_file = 0

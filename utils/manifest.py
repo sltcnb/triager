@@ -9,12 +9,18 @@ import json
 import csv
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 from dataclasses import dataclass, asdict
 
 
 logger = logging.getLogger(__name__)
+
+
+def _utc_now_iso() -> str:
+    """Timezone-aware UTC timestamp (ISO-8601, 'Z'). Naive local time is not
+    forensically defensible — timelines must be unambiguous."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 @dataclass
@@ -77,7 +83,7 @@ class CollectionManifest:
         self.output_dir = output_dir
         self.level = level
         self.entries: List[CollectionEntry] = []
-        self.start_time = datetime.now()
+        self.start_time = datetime.now(timezone.utc)
         self.end_time: Optional[datetime] = None
         self.errors: List[str] = []
         self.warnings: List[str] = []
@@ -134,7 +140,7 @@ class CollectionManifest:
             source_created=source_created,
             source_modified=source_modified,
             source_accessed=source_accessed,
-            collection_time=datetime.now().isoformat(),
+            collection_time=_utc_now_iso(),
             status=status,
             error=error,
             category=category,
@@ -191,12 +197,12 @@ class CollectionManifest:
         Returns:
             Path to saved manifest.
         """
-        self.end_time = datetime.now()
+        self.end_time = datetime.now(timezone.utc)
 
         manifest_data = {
             'metadata': {
-                'tool': 'Triager',
-                'version': '1.0.0',
+                'tool': 'CherryPick',
+                'version': '1.2.0',
                 'level': self.level,
                 'start_time': self.start_time.isoformat(),
                 'end_time': self.end_time.isoformat(),
@@ -264,7 +270,7 @@ class CollectionManifest:
 
         with open(log_path, 'w', encoding='utf-8') as f:
             f.write("Triager Error Log\n")
-            f.write(f"Generated: {datetime.now().isoformat()}\n")
+            f.write(f"Generated: {_utc_now_iso()}\n")
             f.write(f"Level: {self.level}\n\n")
             f.write(f"Total Errors: {len(self.errors)}\n")
             f.write(f"Total Warnings: {len(self.warnings)}\n\n")

@@ -31,6 +31,11 @@ from typing import List, Optional, Set
 
 CHUNK_READ = 1024 * 1024  # 1 MiB read window for hashing
 
+#: Acquisition tool version, surfaced in the manifest chain-of-custody block.
+#: Keep in sync with brick.yaml ``version`` and triager.py ``--version``.
+TOOL_VERSION = "1.2.0"
+TOOL_NAME = "CherryPick"
+
 _OS_ENUM = {"windows": "windows", "linux": "linux", "darwin": "macos"}
 
 
@@ -60,14 +65,18 @@ class ArtifactRef:
     sha256: str
     size: int
     category: str
+    collected_at: Optional[str] = None  # UTC time the source was collected
 
     def to_manifest(self) -> dict:
-        return {
+        m = {
             "name": self.name,
             "sha256": self.sha256,
             "size": self.size,
             "category": self.category,
         }
+        if self.collected_at:
+            m["collected_at"] = self.collected_at
+        return m
 
 
 @dataclass
@@ -81,6 +90,13 @@ class SessionResult:
     finished_at: Optional[str] = None
     artifacts: List[ArtifactRef] = field(default_factory=list)
     errors: List[str] = field(default_factory=list)
+    #: Structured record of artifacts that were attempted but NOT obtained
+    #: (failed/skipped). Preserving gaps makes absences provable rather than
+    #: silently dropped — critical for a defensible acquisition.
+    gaps: List[dict] = field(default_factory=list)
+    #: Chain-of-custody metadata (operator, tool/collector versions, host id,
+    #: argv, ...). Populated by the orchestrator at finalize().
+    chain_of_custody: Optional[dict] = None
 
     @property
     def total_bytes(self) -> int:
@@ -100,6 +116,10 @@ class SessionResult:
         }
         if self.finished_at:
             manifest["finished_at"] = self.finished_at
+        if self.gaps:
+            manifest["gaps"] = list(self.gaps)
+        if self.chain_of_custody:
+            manifest["chain_of_custody"] = dict(self.chain_of_custody)
         return manifest
 
 

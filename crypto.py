@@ -36,6 +36,69 @@ def _require():
         ) from exc
 
 
+def _require_ed25519():
+    try:
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+            Ed25519PrivateKey,
+            Ed25519PublicKey,
+        )
+
+        return (Ed25519PrivateKey, Ed25519PublicKey, serialization)
+    except ImportError as exc:  # pragma: no cover - environment dependent
+        raise RuntimeError("manifest signing requires the 'cryptography' package.") from exc
+
+
+# ── Ed25519 detached signatures (bundle manifest chain-of-custody) ──────────────
+# The transport primitives above protect the upload channel. Signing protects the
+# EVIDENCE itself: the agent signs the bundle manifest with a long-lived Ed25519
+# key so any downstream party can prove the manifest (and, through it, every
+# blob hash it lists) was produced by this agent and not altered afterwards.
+
+
+def generate_signing_keypair() -> tuple[bytes, bytes]:
+    """Return ``(private_bytes, public_bytes)`` for an Ed25519 keypair (raw, 32B each)."""
+    Ed25519PrivateKey, _, serialization = _require_ed25519()
+    priv = Ed25519PrivateKey.generate()
+    priv_b = priv.private_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PrivateFormat.Raw,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+    pub_b = priv.public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+    return priv_b, pub_b
+
+
+def public_key_from_private(private_bytes: bytes) -> bytes:
+    """Derive the raw 32-byte Ed25519 public key from a raw private key."""
+    Ed25519PrivateKey, _, serialization = _require_ed25519()
+    priv = Ed25519PrivateKey.from_private_bytes(private_bytes)
+    return priv.public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+
+
+def sign(private_bytes: bytes, message: bytes) -> bytes:
+    """Return a 64-byte Ed25519 detached signature over ``message``."""
+    Ed25519PrivateKey, _, _ = _require_ed25519()
+    priv = Ed25519PrivateKey.from_private_bytes(private_bytes)
+    return priv.sign(message)
+
+
+def verify(public_bytes: bytes, message: bytes, signature: bytes) -> bool:
+    """Verify an Ed25519 detached signature. Returns True/False, never raises."""
+    _, Ed25519PublicKey, _ = _require_ed25519()
+    try:
+        Ed25519PublicKey.from_public_bytes(public_bytes).verify(signature, message)
+        return True
+    except Exception:
+        return False
+
+
 def generate_keypair() -> tuple[bytes, bytes]:
     """Return ``(private_bytes, public_bytes)`` for an X25519 keypair (raw, 32B each)."""
     X25519PrivateKey, _, _, _, _, serialization = _require()

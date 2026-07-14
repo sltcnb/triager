@@ -43,10 +43,21 @@ def _sha256(path: Path) -> str:
 class BundleWriter:
     """Write a content-addressed artifact bundle from staged collection output."""
 
-    def __init__(self, staged_root: str, bundle_dir: str):
+    def __init__(self, staged_root: str, bundle_dir: str, *, signing_key: bytes | None = None):
         self.staged_root = Path(staged_root)
         self.bundle_dir = Path(bundle_dir)
         self.blobs_dir = self.bundle_dir / "blobs"
+        # Explicit key wins; otherwise resolve from the environment. None → the
+        # bundle is written UNSIGNED and a loud warning is emitted.
+        self.signing_key = signing_key
+        if self.signing_key is None:
+            try:
+                from utils import signing
+
+                self.signing_key = signing.load_signing_key()
+            except Exception as exc:  # key misconfig must not crash collection
+                logger.error("bundle: signing key could not be loaded: %s", exc)
+                self.signing_key = None
 
     def write(self, result: SessionResult, *, validate: bool = True) -> Path:
         """Materialize the bundle. Returns the bundle directory path.
@@ -79,18 +90,43 @@ class BundleWriter:
         manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode("utf-8")
         manifest_path.write_bytes(manifest_bytes)
 
-        # bundle.sha256 seals the manifest.
+        # bundle.sha256 seals the manifest against corruption (recomputable).
         seal = hashlib.sha256(manifest_bytes).hexdigest()
         (self.bundle_dir / "bundle.sha256").write_text(
             f"{seal}  manifest.json\n", encoding="utf-8"
         )
+
+        # manifest.sig is the tamper-EVIDENCE: an Ed25519 signature over the exact
+        # manifest bytes. Because every blob hash lives in the manifest, a valid
+        # signature transitively attests the whole bundle.
+        self._sign_manifest(manifest_bytes)
+
         logger.info("bundle written: %s (%d artifacts)", self.bundle_dir, len(result.artifacts))
         return self.bundle_dir
+
+    def _sign_manifest(self, manifest_bytes: bytes) -> None:
+        from utils import signing
+
+        if not self.signing_key:
+            logger.warning(
+                "bundle: NO signing key configured — manifest is UNSIGNED and not "
+                "tamper-evident. Set CHERRYPICK_SIGNING_KEY for a defensible bundle."
+            )
+            return
+        try:
+            sig_payload = signing.sign_manifest(manifest_bytes, self.signing_key)
+        except Exception as exc:
+            logger.error("bundle: manifest signing failed: %s", exc)
+            return
+        (self.bundle_dir / signing.SIG_FILENAME).write_text(
+            json.dumps(sig_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        logger.info("bundle: manifest signed (ed25519)")
 
     def _event(self, art) -> dict:
         """Render a forensic_event.schema.json-conformant record for an artifact."""
         return {
-            "timestamp": now_iso(),
+            "timestamp": getattr(art, "collected_at", None) or now_iso(),
             "message": f"collected {art.name} ({art.category})",
             "artifact_type": art.category,
             "timestamp_desc": "collection",

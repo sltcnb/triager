@@ -14,6 +14,8 @@ Unlike Talon's originals these raise :class:`UploadError` instead of calling
 
 from __future__ import annotations
 
+import logging
+import os
 import ssl
 import urllib.error
 import urllib.request
@@ -23,16 +25,32 @@ from typing import Union
 
 PathLike = Union[str, Path]
 
+logger = logging.getLogger(__name__)
+
 
 class UploadError(RuntimeError):
     """Raised on any upload failure."""
 
 
-def _insecure_ctx() -> ssl.SSLContext:
-    # MinIO is often deployed with a self-signed cert on internal IR networks.
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
+def _ssl_ctx() -> ssl.SSLContext:
+    """TLS context for uploads — verifying by default.
+
+    Evidence in transit must be tamper-evident, so certificates are verified.
+    For internal MinIO deployments with a private CA, point
+    ``CHERRYPICK_CA_BUNDLE`` at the CA PEM instead of disabling verification.
+
+    Verification can be disabled only by explicitly setting
+    ``CHERRYPICK_INSECURE_TLS=1`` (logged loudly) — never silently.
+    """
+    ca_bundle = os.environ.get("CHERRYPICK_CA_BUNDLE")
+    ctx = ssl.create_default_context(cafile=ca_bundle or None)
+    if os.environ.get("CHERRYPICK_INSECURE_TLS", "").lower() in ("1", "true", "yes"):
+        logger.warning(
+            "CHERRYPICK_INSECURE_TLS set — TLS certificate verification DISABLED. "
+            "Uploaded evidence is exposed to undetectable MITM tampering."
+        )
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
     return ctx
 
 
@@ -47,7 +65,7 @@ def upload_via_presigned(zip_path: PathLike, presigned_url: str) -> None:
         headers={"Content-Type": "application/zip"}, method="PUT",
     )
     try:
-        with urllib.request.urlopen(req, timeout=600, context=_insecure_ctx()) as resp:
+        with urllib.request.urlopen(req, timeout=600, context=_ssl_ctx()) as resp:
             print(f"  [+] Upload successful (HTTP {resp.status})")
     except urllib.error.HTTPError as exc:
         raise UploadError(f"HTTP {exc.code}: {exc.read(256).decode(errors='replace')}") from exc
@@ -69,7 +87,7 @@ def upload_log_via_presigned(log_path: PathLike, presigned_url: str) -> bool:
         headers={"Content-Type": "text/plain; charset=utf-8"}, method="PUT",
     )
     try:
-        with urllib.request.urlopen(req, timeout=120, context=_insecure_ctx()) as resp:
+        with urllib.request.urlopen(req, timeout=120, context=_ssl_ctx()) as resp:
             print(f"  [+] Execution log uploaded (HTTP {resp.status})")
             return True
     except Exception as exc:

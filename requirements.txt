@@ -1,8 +1,9 @@
-# Triager Requirements
+# CherryPick Requirements
 
 # Core dependencies
 pyyaml>=6.0
 tqdm>=4.65.0
+cryptography>=42.0.0  # Ed25519 bundle signing + AES-256-GCM upload channel
 
 # Required for raw image support
 pytsk3>=20220826

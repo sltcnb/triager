@@ -458,7 +458,7 @@ Examples:
     )
 
     parser.add_argument('--version', action='version',
-                        version='Triager 1.2.0')
+                        version='CherryPick 1.2.0')
 
     # Mode and image path
     parser.add_argument(

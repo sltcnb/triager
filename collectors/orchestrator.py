@@ -109,6 +109,16 @@ class HarvesterCollection(ArtifactCollector):
         """Build the session manifest from successful manifest entries."""
         for entry in self.manifest.entries:
             if entry.status != "success":
+                # Preserve the gap: record what was attempted but not obtained so
+                # absences are provable rather than silently dropped.
+                self.result.gaps.append(
+                    {
+                        "source_path": entry.source_path,
+                        "category": entry.category,
+                        "status": entry.status,
+                        "reason": entry.error or "",
+                    }
+                )
                 continue
             sha = entry.sha256
             size = entry.size_bytes
@@ -129,11 +139,15 @@ class HarvesterCollection(ArtifactCollector):
                     sha256=sha,
                     size=size,
                     category=entry.category,
+                    collected_at=entry.collection_time or None,
                 )
             )
         for err in self.manifest.errors:
             self.result.errors.append(str(err))
         self.result.finished_at = _now()
+        self.result.chain_of_custody = _build_chain_of_custody(
+            self.level, sorted(self._resolved.keys())
+        )
         return self.result
 
     # ── internals ──────────────────────────────────────────────────────────
@@ -170,3 +184,43 @@ def _now() -> str:
     from collectors.artifact_collector import now_iso
 
     return now_iso()
+
+
+def _operator_identity() -> str:
+    """Best-effort operator identity for the audit trail."""
+    override = os.environ.get("CHERRYPICK_OPERATOR")
+    if override:
+        return override
+    import getpass
+
+    try:
+        return getpass.getuser()
+    except Exception:  # pragma: no cover - environment dependent
+        return os.environ.get("USER") or os.environ.get("USERNAME") or "unknown"
+
+
+def _host_id() -> str:
+    """Stable-ish host identifier (MAC-derived) for correlating acquisitions."""
+    import uuid
+
+    return f"{uuid.getnode():012x}"
+
+
+def _build_chain_of_custody(level: str, collector_set: List[str]) -> Dict[str, Any]:
+    """Assemble the chain-of-custody block embedded in the bundle manifest."""
+    import platform as _platform
+    import sys
+
+    from collectors.artifact_collector import TOOL_NAME, TOOL_VERSION
+
+    return {
+        "tool": TOOL_NAME,
+        "tool_version": TOOL_VERSION,
+        "operator": _operator_identity(),
+        "host_id": _host_id(),
+        "platform": _platform.platform(),
+        "python_version": _platform.python_version(),
+        "argv": list(sys.argv),
+        "collection_level": level,
+        "collector_set": list(collector_set),
+    }

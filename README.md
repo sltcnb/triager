@@ -1,10 +1,38 @@
-# triager
+# CherryPick
 
 A comprehensive, cross-OS forensic acquisition agent. It walks a host (live), a
 mounted volume, a pytsk3 disk image (E01/dd/vhd), or a raw device (BitLocker) and
 gathers artifacts into a **signed, content-addressed bundle** — the same contract
-Citadel's Talon produces — while keeping Triager's strengths (pytsk3
+Citadel's Talon produces — while keeping CherryPick's strengths (pytsk3
 imaging, YARA, multithreading) and one-file-per-collector modularity.
+
+## Forensic soundness
+
+CherryPick produces bundles designed to be **independently verifiable and
+tamper-evident** — the credibility core of a forensic acquisition:
+
+- **Ed25519-signed manifest** — the agent signs `manifest.json` with a long-lived
+  Ed25519 key (`manifest.sig`). Every artifact's SHA-256 lives in the manifest,
+  so a valid signature transitively attests every blob. `bundle.sha256` still
+  seals against corruption; the signature adds tamper *evidence* a recomputable
+  hash cannot. Provide the key via `CHERRYPICK_SIGNING_KEY` (path) or
+  `CHERRYPICK_SIGNING_KEY_HEX`; generate one with
+  `python verify_bundle.py --gen-key ./keys`. Without a key the bundle is written
+  UNSIGNED with a loud warning.
+- **Independent verifier** — `python verify_bundle.py <bundle_dir>` recomputes
+  every blob hash, checks the content-addressed filenames, the seal, the
+  `artifact_count`/`total_bytes` consistency, and the signature — with no need for
+  the collection host or the server. `--trusted-key <hex|.pub>` pins the expected
+  signer; `--require-signature` fails on unsigned bundles. Exit 0 = verified.
+- **Chain of custody** — the manifest embeds a `chain_of_custody` block:
+  operator, tool + collector-set versions, host id, platform, argv, and level.
+- **Provable gaps** — artifacts that were attempted but failed/skipped are
+  recorded in `gaps[]` rather than silently dropped, so absences are provable.
+- **UTC timestamps** — acquisition and collection times are timezone-aware UTC
+  (`…Z`), so timelines are unambiguous.
+- **Verified uploads** — TLS certificates are verified by default; internal MinIO
+  with a private CA is supported via `CHERRYPICK_CA_BUNDLE`. Verification can only
+  be disabled by explicitly setting `CHERRYPICK_INSECURE_TLS=1` (logged loudly).
 
 ## Demo
 

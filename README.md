@@ -1,5 +1,9 @@
 # CherryPick
 
+[![CI](https://github.com/sltcnb/CherryPick/actions/workflows/ci.yml/badge.svg)](https://github.com/sltcnb/CherryPick/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
+
 A comprehensive, cross-OS forensic acquisition agent. It walks a host (live), a
 mounted volume, a pytsk3 disk image (E01/dd/vhd), or a raw device (BitLocker) and
 gathers artifacts into a **signed, content-addressed bundle** — the same contract
@@ -91,7 +95,7 @@ tamper-evident** — the credibility core of a forensic acquisition:
 
 ```bash
 # Clone or download the tool
-cd triager
+cd CherryPick
 
 # Install dependencies
 pip install -r requirements.txt

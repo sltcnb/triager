@@ -212,6 +212,7 @@ def _build_chain_of_custody(level: str, collector_set: List[str]) -> Dict[str, A
     import sys
 
     from collectors.artifact_collector import TOOL_NAME, TOOL_VERSION
+    from utils.redact import redact_argv
 
     return {
         "tool": TOOL_NAME,
@@ -220,7 +221,10 @@ def _build_chain_of_custody(level: str, collector_set: List[str]) -> Dict[str, A
         "host_id": _host_id(),
         "platform": _platform.platform(),
         "python_version": _platform.python_version(),
-        "argv": list(sys.argv),
+        # Redacted: argv can carry secrets (--bitlocker-key, --api-token, ...)
+        # on the command line, and this block is embedded verbatim into the
+        # Ed25519-signed manifest that gets shared with third parties.
+        "argv": redact_argv(sys.argv),
         "collection_level": level,
         "collector_set": list(collector_set),
     }

@@ -574,7 +574,14 @@ Examples:
     # Dead-box sources (Talon parity)
     parser.add_argument('--path', help='Dead-box: path to a mounted volume root')
     parser.add_argument('--disk', help='Dead-box: raw block device (e.g. /dev/sdb1)')
-    parser.add_argument('--bitlocker-key', help='BitLocker recovery key/passphrase for --disk')
+    parser.add_argument(
+        '--bitlocker-key',
+        help=(
+            'BitLocker recovery key/passphrase for --disk. Prefer the '
+            'CHERRYPICK_BITLOCKER_KEY environment variable instead so the '
+            'secret does not appear on the command line.'
+        ),
+    )
 
     # Output format
     parser.add_argument(
@@ -585,7 +592,14 @@ Examples:
     # Remote upload (Talon parity)
     parser.add_argument('--api-url', help='Citadel API base URL for case upload')
     parser.add_argument('--case-id', help='Case ID for API upload')
-    parser.add_argument('--api-token', help='Bearer token for API upload')
+    parser.add_argument(
+        '--api-token',
+        help=(
+            'Bearer token for API upload. Prefer the CHERRYPICK_API_TOKEN '
+            'environment variable instead so the secret does not appear on '
+            'the command line.'
+        ),
+    )
     parser.add_argument('--presigned-url', help='S3/MinIO presigned PUT URL for upload')
 
     # IOC fetch sweep
@@ -649,6 +663,11 @@ def main():
         config['disk'] = args.disk
     if args.bitlocker_key:
         config['bitlocker_key'] = args.bitlocker_key
+    elif os.environ.get('CHERRYPICK_BITLOCKER_KEY'):
+        # Preferred over --bitlocker-key: avoids the secret ever appearing
+        # in the process command line (visible via `ps`, shell history,
+        # and — pre-redaction — the signed chain-of-custody manifest).
+        config['bitlocker_key'] = os.environ['CHERRYPICK_BITLOCKER_KEY']
     if args.output_format:
         config['output_format'] = args.output_format
     if args.no_zip and config.get('output_format', 'zip') == 'zip':
@@ -660,6 +679,9 @@ def main():
         config['case_id'] = args.case_id
     if args.api_token:
         config['api_token'] = args.api_token
+    elif os.environ.get('CHERRYPICK_API_TOKEN'):
+        # Preferred over --api-token for the same reason as above.
+        config['api_token'] = os.environ['CHERRYPICK_API_TOKEN']
     if args.presigned_url:
         config['presigned_url'] = args.presigned_url
     if args.fetch:
